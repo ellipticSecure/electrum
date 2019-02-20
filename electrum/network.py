@@ -63,9 +63,6 @@ from .logging import get_logger, Logger
 _logger = get_logger(__name__)
 
 
-# lightning network
-from . import lnwatcher
-from . import lnrouter
 
 NODES_RETRY_INTERVAL = 60
 SERVER_RETRY_INTERVAL = 10
@@ -299,6 +296,8 @@ class Network(Logger):
         self._set_status('disconnected')
 
         # lightning network
+        from . import lnwatcher
+        from . import lnrouter
         self.channel_db = lnrouter.ChannelDB(self)
         self.path_finder = lnrouter.LNPathFinder(self.channel_db)
         self.lnwatcher = lnwatcher.LNWatcher(self)
