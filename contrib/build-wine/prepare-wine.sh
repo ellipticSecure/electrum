@@ -17,6 +17,10 @@ PYINSTALLER_REPO="https://github.com/SomberNight/pyinstaller.git"
 PYINSTALLER_COMMIT=d1cdd726d6a9edc70150d5302453fb90fdd09bf2
 # ^ tag 3.4, plus a custom commit that fixes cross-compilation with MinGW
 
+LIBEHSM_FILENAME=eHSM-pkcs11-2.1-win32.zip
+LIBEHSM_URL=https://ellipticsecure.com/downloads/$LIBEHSM_FILENAME
+LIBEHSM_SHA256=6fa1fae26483dad24c11afb1346b9fb870b60529e51f4906867cc6dbc3f8d3ff
+
 PYTHON_VERSION=3.6.8
 
 ## These settings probably don't need change
@@ -76,7 +80,13 @@ verify_hash "$CACHEDIR/$LIBUSB_FILENAME" "$LIBUSB_SHA256"
 7z x -olibusb "$CACHEDIR/$LIBUSB_FILENAME" -aoa
 cp libusb/MS32/dll/libusb-1.0.dll $WINEPREFIX/drive_c/$PYTHON_FOLDER/
 
+info "Installing libehsm."
+download_if_not_exist "$CACHEDIR/$LIBEHSM_FILENAME" "$LIBEHSM_URL"
+verify_hash "$CACHEDIR/$LIBEHSM_FILENAME" "$LIBEHSM_SHA256"
+7z e -oehsm "$CACHEDIR/$LIBEHSM_FILENAME" -aoa
+
 mkdir -p $WINEPREFIX/drive_c/tmp
+cp ehsm/ehsm.dll $WINEPREFIX/drive_c/tmp/
 cp "$CACHEDIR/secp256k1/libsecp256k1.dll" $WINEPREFIX/drive_c/tmp/
 
 
