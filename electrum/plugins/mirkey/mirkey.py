@@ -31,7 +31,9 @@ ehsmlib = None
 try:
     # if the shared lib is not in the system LD_LIBRARY_PATH then specify it in EHSM_MODULE
     if 'EHSM_MODULE' in os.environ:
-        ehsmlib = ehsm.load_ehsm(os.environ['EHSM_MODULE'])
+        path = os.environ['EHSM_MODULE']
+        _logger.debug(f"Loading eHSM Module from {path}")
+        ehsmlib = ehsm.load_ehsm(path)
     else:
         ehsmlib = ehsm.load_ehsm()
 except ImportError as e:
