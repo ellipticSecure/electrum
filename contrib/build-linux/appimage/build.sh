@@ -20,11 +20,13 @@ SQUASHFSKIT_COMMIT="ae0d656efa2d0df2fcac795b6823b44462f19386"
 VERSION=`git describe --tags --dirty --always`
 APPIMAGE="$DISTDIR/electrum-$VERSION-x86_64.AppImage"
 
+. "$CONTRIB"/build_tools_util.sh
+
 rm -rf "$BUILDDIR"
 mkdir -p "$APPDIR" "$CACHEDIR" "$DISTDIR"
 
-
-. "$CONTRIB"/build_tools_util.sh
+# potential leftover from setuptools that might make pip put garbage in binary
+rm -rf "$PROJECT_ROOT/build"
 
 
 info "downloading some dependencies."
@@ -84,8 +86,8 @@ info "building libsecp256k1."
     git reset --hard "$LIBSECP_VERSION"
     git clean -f -x -q
     export SOURCE_DATE_EPOCH=1530212462
-    ./autogen.sh
     echo "LDFLAGS = -no-undefined" >> Makefile.am
+    ./autogen.sh
     ./configure \
       --prefix="$APPDIR/usr" \
       --enable-module-recovery \
@@ -132,14 +134,14 @@ info "preparing electrum-locale."
 
 info "installing electrum and its dependencies."
 mkdir -p "$CACHEDIR/pip_cache"
-"$python" -m pip install --cache-dir "$CACHEDIR/pip_cache" -r "$CONTRIB/deterministic-build/requirements.txt"
-"$python" -m pip install --cache-dir "$CACHEDIR/pip_cache" -r "$CONTRIB/deterministic-build/requirements-binaries.txt"
-"$python" -m pip install --cache-dir "$CACHEDIR/pip_cache" -r "$CONTRIB/deterministic-build/requirements-hw.txt"
-"$python" -m pip install --cache-dir "$CACHEDIR/pip_cache" "$PROJECT_ROOT"
+"$python" -m pip install --no-warn-script-location --cache-dir "$CACHEDIR/pip_cache" -r "$CONTRIB/deterministic-build/requirements.txt"
+"$python" -m pip install --no-warn-script-location --cache-dir "$CACHEDIR/pip_cache" -r "$CONTRIB/deterministic-build/requirements-binaries.txt"
+"$python" -m pip install --no-warn-script-location --cache-dir "$CACHEDIR/pip_cache" -r "$CONTRIB/deterministic-build/requirements-hw.txt"
+"$python" -m pip install --no-warn-script-location --cache-dir "$CACHEDIR/pip_cache" "$PROJECT_ROOT"
 
 
 info "copying zbar"
-cp "/usr/lib/libzbar.so.0" "$APPDIR/usr/lib/libzbar.so.0"
+cp "/usr/lib/x86_64-linux-gnu/libzbar.so.0" "$APPDIR/usr/lib/libzbar.so.0"
 
 
 info "desktop integration."
@@ -157,12 +159,8 @@ info "finalizing AppDir."
 
     cd "$APPDIR"
     # copy system dependencies
-    # note: temporarily move PyQt5 out of the way so
-    # we don't try to bundle its system dependencies.
-    mv "$APPDIR/usr/lib/python3.6/site-packages/PyQt5" "$BUILDDIR"
     copy_deps; copy_deps; copy_deps
     move_lib
-    mv "$BUILDDIR/PyQt5" "$APPDIR/usr/lib/python3.6/site-packages"
 
     # apply global appimage blacklist to exclude stuff
     # move usr/include out of the way to preserve usr/include/python3.6m.
@@ -171,10 +169,12 @@ info "finalizing AppDir."
     mv usr/include.tmp usr/include
 ) || fail "Could not finalize AppDir"
 
-# copy libusb here because it is on the AppImage excludelist and it can cause problems if we use system libusb
-info "Copying libusb"
-cp -f /usr/lib/x86_64-linux-gnu/libusb-1.0.so "$APPDIR/usr/lib/libusb-1.0.so" || fail "Could not copy libusb"
-
+# We copy some libraries here that are on the AppImage excludelist
+info "Copying additional libraries"
+(
+    # On some systems it can cause problems to use the system libusb
+    cp -f /usr/lib/x86_64-linux-gnu/libusb-1.0.so "$APPDIR/usr/lib/libusb-1.0.so" || fail "Could not copy libusb"
+)
 
 info "stripping binaries from debug symbols."
 # "-R .note.gnu.build-id" also strips the build id
@@ -221,8 +221,11 @@ rm -rf "$PYDIR"/site-packages/PyQt5/Qt.so
 # these are deleted as they were not deterministic; and are not needed anyway
 find "$APPDIR" -path '*/__pycache__*' -delete
 rm "$APPDIR"/usr/lib/libsecp256k1.a
+# note that jsonschema-*.dist-info is needed by that package as it uses 'pkg_resources.get_distribution'
+for f in "$PYDIR"/site-packages/jsonschema-*.dist-info; do mv "$f" "$(echo "$f" | sed s/\.dist-info/\.dist-info2/)"; done
 rm -rf "$PYDIR"/site-packages/*.dist-info/
 rm -rf "$PYDIR"/site-packages/*.egg-info/
+for f in "$PYDIR"/site-packages/jsonschema-*.dist-info2; do mv "$f" "$(echo "$f" | sed s/\.dist-info2/\.dist-info/)"; done
 
 
 find -exec touch -h -d '2000-11-11T11:11:11+00:00' {} +
@@ -231,8 +234,11 @@ find -exec touch -h -d '2000-11-11T11:11:11+00:00' {} +
 info "creating the AppImage."
 (
     cd "$BUILDDIR"
-    chmod +x "$CACHEDIR/appimagetool"
-    "$CACHEDIR/appimagetool" --appimage-extract
+    cp "$CACHEDIR/appimagetool" "$CACHEDIR/appimagetool_copy"
+    # zero out "appimage" magic bytes, as on some systems they confuse the linker
+    sed -i 's|AI\x02|\x00\x00\x00|' "$CACHEDIR/appimagetool_copy"
+    chmod +x "$CACHEDIR/appimagetool_copy"
+    "$CACHEDIR/appimagetool_copy" --appimage-extract
     # We build a small wrapper for mksquashfs that removes the -mkfs-fixed-time option
     # that mksquashfs from squashfskit does not support. It is not needed for squashfskit.
     cat > ./squashfs-root/usr/lib/appimagekit/mksquashfs << EOF

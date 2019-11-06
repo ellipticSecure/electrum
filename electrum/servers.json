@@ -191,12 +191,6 @@
         "s": "50002",
         "version": "1.4"
     },
-    "electrumx.ml": {
-        "pruning": "-",
-        "s": "50002",
-        "t": "50001",
-        "version": "1.4"
-    },
     "electrumx.soon.it": {
         "pruning": "-",
         "s": "50002",
@@ -215,12 +209,6 @@
         "version": "1.4"
     },
     "enode.duckdns.org": {
-        "pruning": "-",
-        "s": "50002",
-        "t": "50001",
-        "version": "1.4"
-    },
-    "erbium1.sytes.net": {
         "pruning": "-",
         "s": "50002",
         "t": "50001",
@@ -404,7 +392,7 @@
     },
     "fortress.qtornado.com": {
         "pruning": "-",
-        "s": "50002",
+        "s": "443",
         "t": "50001",
         "version": "1.4"
     },
@@ -412,6 +400,12 @@
         "pruning": "-",
         "s": "56002",
         "t": "56001",
+        "version": "1.4"
+    },
+    "electrumx.erbium.eu": {
+        "pruning": "-",
+        "s": "50002",
+        "t": "50001",
         "version": "1.4"
     }
 }
